@@ -13,42 +13,44 @@ import atexit
 from digitalio import DigitalInOut, Direction
 from json import loads,dumps
 from ew309 import EW309
-from serial import Read_Serial_JSON
+from controller import *
+# from serial import Read_Serial_JSON
+
+# ser = Read_Serial_JSON(json_data)
+
+# json_data = {
+# # 	'target':0,
+# # 	'Kp':4000,
+# # 	'Ki':0,
+# # 	'Kd':0,
+# # 	'runtime':1,
+# # 	'min_drive':mot_min_drive
+# }
+
+
+# def your_controller():
+# 	# Initialize all the variables you can control:
+# 	pan_speed = 0		# [0,1]
+# 	pan_damp = 0		# [0,1]
+
+# 	tilt_speed = 0		# [0,1]
+# 	tilt_damp = 0		# [0,1]
+
+# 	# Maybe pull some PID values from matlab over serial ?
+# 	some_characteristics_for_your_controller = ser.read_serial()
+
+# 	print(pantilt.euler())
+# 	sleep(0.3)
+
+# 	##############################################
+# 	####################### THINGS HAPPEN HERE
+# 	##############################################
+
+# 	pantilt.set_outputs(pan_speed,tilt_speed,pan_damp,tilt_damp)
 
 pantilt = EW309()
 
-json_data = {
-# 	'target':0,
-# 	'Kp':4000,
-# 	'Ki':0,
-# 	'Kd':0,
-# 	'runtime':1,
-# 	'min_drive':mot_min_drive
-}
 
-ser = Read_Serial_JSON(json_data)
-
-def your_controller():
-	# Initialize all the variables you can control:
-	pan_dir = 0			# 0 clockwise, 1 ccw
-	pan_speed = 0		# [0,255]
-	pan_damp = 0		# [0,255]
-
-	tilt_dir = 0		# 0 down, 1 up
-	tilt_speed = 0		# [0,255]
-	tilt_damp = 0		# [0,255]
-
-	# Maybe pull some PID values from matlab over serial ?
-	some_characteristics_for_your_controller = ser.read_serial()
-
-	print(pantilt.euler())
-	sleep(0.3)
-
-	##############################################
-	####################### THINGS HAPPEN HERE
-	##############################################
-
-	pantilt.set_outputs(pan_speed,tilt_speed,pan_damp,tilt_damp)
 
 
 ####################################
@@ -111,18 +113,18 @@ if __name__ == 'code':
 if __name__ == '__main__':
 	print("enter data")
 	print(">>")
-	# from controller import *
 
 	while(1):
 		if (pantilt.manual_mode.value):
-			ser.clear_serial()
 			pantilt.poll_inputs()
 			pantilt.set_outputs_manual()
 			print(pantilt.imu.euler)
 			sleep(0.01)
 		else:
-			print('auto mode entered')
-			your_controller()
+			print('auto mode')
+			hea,pitch,roll = pantilt.euler()
+			new_x,new_y,new_x_damp,new_y_damp = your_controller(hea,pitch,roll)
+			pantilt.set_outputs(new_x,new_y,new_x_damp,new_y_damp)
 			sleep(0.01)
 
 	exit_program('__main__')

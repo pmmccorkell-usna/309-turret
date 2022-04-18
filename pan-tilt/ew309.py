@@ -156,7 +156,7 @@ class EW309():
 		y_sp = abs(int(tilt_speed * 255))
 		y_damp = int(tilt_damp * 255)
 
-		print(x_dir,x_sp,y_dir,y_sp)
+		# print(x_dir,x_sp,y_dir,y_sp)
 
 		self.set_outputs_raw(x_sp,x_dir,x_damp,y_sp,y_dir,y_damp)
 
