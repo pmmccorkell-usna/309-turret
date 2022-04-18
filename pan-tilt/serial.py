@@ -28,7 +28,7 @@ class Read_Serial_JSON():
 		return self.json_dict
 
 	# Not necessary, but prevents some confusion.
-	# Prefer to just use print() / print(f'') from code.py
+	# Prefer to just use print() / print(f'') directly.
 	def write_serial(self, a_string):
 		print(a_string)
 

@@ -10,6 +10,7 @@ import busio
 import adafruit_bno055
 import analogio
 from digitalio import DigitalInOut, Direction
+from math import copysign
 
 
 class EW309():
@@ -143,7 +144,24 @@ class EW309():
 			'tilt_damp_out' : self.max522_dac2_chB
 		}
 
-	def set_outputs(self,pan_speed,pan_dir,pan_damp,tilt_speed,tilt_dir,tilt_damp):
+	# Inputs normalized to [-1,1]
+	def set_outputs(self,pan_speed=0,tilt_speed=0,pan_damp=0,tilt_damp=0):
+		#abs_pan_speed = max(abs(pan_speed),1)
+		#x_dir = max(pan_speed / abs_pan_speed,0)
+		x_dir = copysign(0.5,pan_speed) + 0.5
+		x_sp = abs(int(pan_speed * 255))
+		x_damp = int(pan_damp*255)
+
+		y_dir = copysign(0.5,tilt_speed) + 0.5
+		y_sp = abs(int(tilt_speed * 255))
+		y_damp = int(tilt_damp * 255)
+
+		print(x_dir,x_sp,y_dir,y_sp)
+
+		self.set_outputs_raw(x_sp,x_dir,x_damp,y_sp,y_dir,y_damp)
+
+	# Inputs not normalized.
+	def set_outputs_raw(self,pan_speed,pan_dir,pan_damp,tilt_speed,tilt_dir,tilt_damp):
 		self.x_out.value = pan_dir
 		self.y_out.value = tilt_dir
 		self.dacs['pan_sp_out'](pan_speed)

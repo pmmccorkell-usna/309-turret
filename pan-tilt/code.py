@@ -48,8 +48,7 @@ def your_controller():
 	####################### THINGS HAPPEN HERE
 	##############################################
 
-	pantilt.set_outputs(pan_speed,pan_dir,pan_damp,tilt_speed,tilt_dir,tilt_damp)
-
+	pantilt.set_outputs(pan_speed,tilt_speed,pan_damp,tilt_damp)
 
 
 ####################################
@@ -93,10 +92,26 @@ if __name__ == 'code':
 		del sys.modules['code']
 	print('reload available')
 
+	# perform a little dance to test the system.
+	def test(pausetime=0.3,effort=0.1):
+		pantilt.set_outputs()
+		sleep(pausetime)
+		pantilt.set_outputs(-1 * effort,-1 * effort)
+		sleep(pausetime)
+		pantilt.set_outputs(-1 * effort,effort)
+		sleep(pausetime)
+		pantilt.set_outputs(effort,effort)
+		sleep(pausetime)
+		pantilt.set_outputs(effort,-1 * effort)
+		sleep(pausetime)
+		pantilt.set_outputs()
+	test()
+
 # This is the default that runs when Ras Pico is plugged in, restarted, ctrl+s, etc.
 if __name__ == '__main__':
 	print("enter data")
 	print(">>")
+	# from controller import *
 
 	while(1):
 		if (pantilt.manual_mode.value):
