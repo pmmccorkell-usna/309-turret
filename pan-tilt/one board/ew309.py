@@ -7,11 +7,10 @@
 from time import sleep
 import board
 import busio
-import pulseio
+import adafruit_bno055
 import analogio
 from digitalio import DigitalInOut, Direction
 from math import copysign
-from ticker import Interrupt_Controller
 
 
 class EW309():
@@ -20,17 +19,16 @@ class EW309():
 		self.max522_shutdown() 		# kill DAC outputs before we do anything else.
 		self.init_inputs()
 		self.init_outputs()
-		self.init_pwm()
-		self.init_tickers()
+		self.init_imu()
 
 		self.deinit_repository = [
 			self.manual_mode,						# button
-			self.spi,self.cs_1,self.cs_2, #self.i2c,	# spi and i2c buses
-			# self.imu,								# BNO055 imu
-			self.x_pulse_in, self.y_pulse_in,		# pulseio inputs
+			self.spi,self.cs_1,self.cs_2,self.i2c,	# spi and i2c buses
+			self.imu,								# BNO055 imu
 			self.x_in,self.y_in,self.pan_sp_in,self.tilt_sp_in,self.pan_damp_in,self.tilt_damp_in,	# ADC readins
 			self.x_out,self.y_out			# Digital out
 		]
+
 
 
 	def poll_inputs(self):
@@ -41,85 +39,31 @@ class EW309():
 		self.input_vals['pan_damp'] = self.pan_damp_in.value
 		self.input_vals['tilt_damp'] = self.tilt_damp_in.value
 
-
-	###################################
-	######### PulseIO Section #########
-	###################################
-	def init_pwm(self):
-		self.x_pulse_in = pulseio.PulseIn(board.IO17,4)
-		self.y_pulse_in = pulseio.PulseIn(board.IO18,4)
-
-	def convert_pwm(self):
-		# Check that there are pulses
-		x_command = 0
-		y_command = 0
-		if len(self.x_pulse_in):
-			# Read last pulse entry, subtract 1.5 ms, divide by 500ms resolution, and clamp to range [-1,1]
-			x_command = self.clamp_val((self.x_pulse_in[-1] - 1500) / 500,-1,1)
-		if len(self.y_pulse_in):
-			# Read last pulse entry, subtract 1.5 ms, divide by 500ms resolution, and clamp to range [-1,1]
-			y_command = self.clamp_val((self.y_pulse_in[-1] - 1500) / 500,-1,1)
-
-		# Set the normalized valeus.
-		self.set_outputs(x_command,y_command)
-
-	def pause_pwm(self):
-		self.x_pulse_in.pause()
-		self.y_pulse_in.pause()
-	
-	def resume_pwm(self):
-		if self.x_pulse_in.paused:
-			self.x_pulse_in.resume()
-		if self.y_pulse_in.paused:
-			self.y_pulse_in.resume()
-
-	####################################
-	########## Ticker Section ##########
-	####################################
-	def init_tickers(self):
-		self.quit = 0
-		self.tickers = Interrupt_Controller()
-
-	def start_controller(self,func_name,update_interval):
-		self.tickers.remove_interrupt_all()
-		self.set_outputs()
-		self.tickers.interrupt(name='check_mode', delay=0.1,function=self.check_mode)
-		self.tickers.interrupt(name='controller',delay=update_interval,function = func_name)
-		self.tickers.loop()
-		self.set_outputs()
-
-	def check_mode(self):
-		# True is manual joystick, False is auto controller
-		if not self.manual_mode:
-			self.set_outputs()
-			self.tickers.pause()
-
-
 	###################################
 	############ IMU Setup ############
 	###################################
-	# def init_I2C(self):
-	# 	self.i2c = busio.I2C(scl=board.SCL,sda=board.SDA)
-	# 	if (self.i2c.try_lock()):
-	# 		print("i2c addresses scanned:")
-	# 		print(self.i2c.scan())
-	# 		self.i2c.unlock()
-	# 	else:
-	# 		print("Cannot scan i2c; locked out.")
-	# 	print()
+	def init_I2C(self):
+		self.i2c = busio.I2C(scl=board.SCL,sda=board.SDA)
+		if (self.i2c.try_lock()):
+			print("i2c addresses scanned:")
+			print(self.i2c.scan())
+			self.i2c.unlock()
+		else:
+			print("Cannot scan i2c; locked out.")
+		print()
 
-	# def init_imu(self):
-	# 	self.init_I2C()
-	# 	self.imu = adafruit_bno055.BNO055_I2C(self.i2c)
+	def init_imu(self):
+		self.init_I2C()
+		self.imu = adafruit_bno055.BNO055_I2C(self.i2c)
 	
-	# def calstatus_imu(self):
-	# 	return self.imu.calibration_status
+	def calstatus_imu(self):
+		return self.imu.calibration_status
 
-	# def quaternion(self):
-	# 	return self.imu.quaternion
+	def quaternion(self):
+		return self.imu.quaternion
 	
-	# def euler(self):
-	# 	return self.imu.euler
+	def euler(self):
+		return self.imu.euler
 
 	###################################
 	########## Helper Funcs ###########
@@ -132,8 +76,7 @@ class EW309():
 		# Make sure we turn off the DACs before losing SPI.
 		for _ in range(3):
 			self.max522_shutdown()
-			self.tickers.remove_interrupt_all()
-			sleep(0.2)
+			sleep(0.3)
 
 		for obj in self.deinit_repository:
 			# print('deinitializing' + str(obj))
@@ -308,6 +251,7 @@ class EW309():
 		# print(val1,val2)
 		# Send it.
 		self.spi.write(bytes([val1,val2]))
+		sleep(0.01)
 
 
 
