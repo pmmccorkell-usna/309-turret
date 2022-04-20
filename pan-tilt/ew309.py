@@ -7,27 +7,28 @@
 from time import sleep
 import board
 import busio
-import pulseio
+# import pulseio
 import analogio
 from digitalio import DigitalInOut, Direction
 from math import copysign
 from ticker import Interrupt_Controller
-
+from adafruit_dotstar import DotStar
 
 class EW309():
 	def __init__(self):
 		self.init_SPI()
 		self.max522_shutdown() 		# kill DAC outputs before we do anything else.
 		self.init_inputs()
+		self.init_featherS2()
 		self.init_outputs()
-		self.init_pwm()
+		# self.init_pwm()
 		self.init_tickers()
 
 		self.deinit_repository = [
 			self.manual_mode,						# button
 			self.spi,self.cs_1,self.cs_2, #self.i2c,	# spi and i2c buses
 			# self.imu,								# BNO055 imu
-			self.x_pulse_in, self.y_pulse_in,		# pulseio inputs
+			# self.x_pulse_in, self.y_pulse_in,		# pulseio inputs
 			self.x_in,self.y_in,self.pan_sp_in,self.tilt_sp_in,self.pan_damp_in,self.tilt_damp_in,	# ADC readins
 			self.x_out,self.y_out			# Digital out
 		]
@@ -40,38 +41,39 @@ class EW309():
 		self.input_vals['tilt_sp'] = self.tilt_sp_in.value
 		self.input_vals['pan_damp'] = self.pan_damp_in.value
 		self.input_vals['tilt_damp'] = self.tilt_damp_in.value
+		self.led = self.manual_mode.value
 
 
 	###################################
 	######### PulseIO Section #########
 	###################################
-	def init_pwm(self):
-		self.x_pulse_in = pulseio.PulseIn(board.IO17,4)
-		self.y_pulse_in = pulseio.PulseIn(board.IO18,4)
+	# def init_pwm(self):
+	# 	self.x_pulse_in = pulseio.PulseIn(board.IO17,4)
+	# 	self.y_pulse_in = pulseio.PulseIn(board.IO18,4)
 
-	def convert_pwm(self):
-		# Check that there are pulses
-		x_command = 0
-		y_command = 0
-		if len(self.x_pulse_in):
-			# Read last pulse entry, subtract 1.5 ms, divide by 500ms resolution, and clamp to range [-1,1]
-			x_command = self.clamp_val((self.x_pulse_in[-1] - 1500) / 500,-1,1)
-		if len(self.y_pulse_in):
-			# Read last pulse entry, subtract 1.5 ms, divide by 500ms resolution, and clamp to range [-1,1]
-			y_command = self.clamp_val((self.y_pulse_in[-1] - 1500) / 500,-1,1)
+	# def convert_pwm(self):
+	# 	# Check that there are pulses
+	# 	x_command = 0
+	# 	y_command = 0
+	# 	if len(self.x_pulse_in):
+	# 		# Read last pulse entry, subtract 1.5 ms, divide by 500ms resolution, and clamp to range [-1,1]
+	# 		x_command = self.clamp_val((self.x_pulse_in[-1] - 1500) / 500,-1,1)
+	# 	if len(self.y_pulse_in):
+	# 		# Read last pulse entry, subtract 1.5 ms, divide by 500ms resolution, and clamp to range [-1,1]
+	# 		y_command = self.clamp_val((self.y_pulse_in[-1] - 1500) / 500,-1,1)
 
-		# Set the normalized valeus.
-		self.set_outputs(x_command,y_command)
+	# 	# Set the normalized valeus.
+	# 	self.set_outputs(x_command,y_command)
 
-	def pause_pwm(self):
-		self.x_pulse_in.pause()
-		self.y_pulse_in.pause()
+	# def pause_pwm(self):
+	# 	self.x_pulse_in.pause()
+	# 	self.y_pulse_in.pause()
 	
-	def resume_pwm(self):
-		if self.x_pulse_in.paused:
-			self.x_pulse_in.resume()
-		if self.y_pulse_in.paused:
-			self.y_pulse_in.resume()
+	# def resume_pwm(self):
+	# 	if self.x_pulse_in.paused:
+	# 		self.x_pulse_in.resume()
+	# 	if self.y_pulse_in.paused:
+	# 		self.y_pulse_in.resume()
 
 	####################################
 	########## Ticker Section ##########
@@ -174,6 +176,18 @@ class EW309():
 		self.manual_mode = DigitalInOut(board.IO33)
 		self.manual_mode.direction = Direction.INPUT
 
+	def init_featherS2(self):
+		# Init Blink LED
+		self.led = DigitalInOut(board.LED)
+		self.led.direction = Direction.OUTPUT
+
+		# Init LDO2 Pin
+		self.vout2 = DigitalInOut(board.LDO2)
+		self.vout2.direction = Direction.OUTPUT
+		self.vout2.value = False
+
+		# Init APA102 dotstar stuff
+		self.led_rgb = DotStar(board.APA102_SCK, board.APA102_MOSI, 1, brightness=0.8, auto_write=True)
 
 	###################################
 	########## Output Setup ###########
@@ -214,8 +228,8 @@ class EW309():
 		y_damp = int(tilt_damp * 255)
 
 		# print(x_dir,x_sp,y_dir,y_sp)
-
 		self.set_outputs_raw(x_sp,x_dir,x_damp,y_sp,y_dir,y_damp)
+
 
 	# Inputs not normalized.
 	def set_outputs_raw(self,pan_speed,pan_dir,pan_damp,tilt_speed,tilt_dir,tilt_damp):
@@ -225,6 +239,11 @@ class EW309():
 		self.dacs['tilt_sp_out'](tilt_speed)
 		self.dacs['pan_damp_out'](pan_damp)
 		self.dacs['tilt_damp_out'](tilt_damp)
+		r = int((pan_damp+tilt_damp)/2)
+		g =  (pan_dir*128)+int(pan_speed/2)
+		b = (tilt_dir*128)+int(tilt_speed /2)
+		# print('r %d, g %d, b %d' %(r,g,b))
+		self.led_rgb[0]=( r, g, b, 0.8)
 
 
 	def set_outputs_manual(self):
@@ -270,6 +289,13 @@ class EW309():
 		self.dacs['pan_damp_out'](self.pan_damp_out)
 		self.dacs['tilt_sp_out'](self.tilt_sp_out)
 		self.dacs['tilt_damp_out'](self.tilt_damp_out)
+
+		r = (self.x_out.value + self.y_out.value) * 128
+		g =  self.clamp_val(self.pan_sp_out ,0,255)
+		b = self.clamp_val(self.tilt_sp_out ,0,255)
+		intensity = self.clamp_val(self.pan_sp_out + self.tilt_sp_out,0,1)
+		# print('r %d, g %d, b %d' %(r,g,b))
+		self.led_rgb[0]=( r, g, b, 0.8)
 
 
 

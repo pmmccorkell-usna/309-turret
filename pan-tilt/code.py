@@ -4,7 +4,6 @@
 # Robotics and Control TSD
 #
 
-
 print("Hello %s" %__name__)
 from time import sleep
 import atexit
@@ -12,13 +11,13 @@ from ew309 import EW309
 
 pantilt = EW309()
 
-def pwm_controller():
-	pantilt.resume_pwm()
-	pantilt.start_controller(pantilt.convert_pwm,0.005)
+# def pwm_controller():
+# 	pantilt.resume_pwm()
+# 	pantilt.start_controller(pantilt.convert_pwm,0.005)
 
-	# pantilt.start_controller is blocking until the ticker loop is paused.
-	#	Code rejoins here:
-	pantilt.pause_pwm()
+# 	# pantilt.start_controller is blocking until the ticker loop is paused.
+# 	#	Code rejoins here:
+# 	pantilt.pause_pwm()
 
 
 ####################################
@@ -91,7 +90,7 @@ if __name__ == '__main__':
 			print('auto mode starting')
 			new_x,new_y,new_x_damp,new_y_damp = 0,0,0,0
 			pantilt.set_outputs(new_x,new_y,new_x_damp,new_y_damp)
-			pwm_controller()
+			# pwm_controller()
 
 	exit_program('__main__')
 
