@@ -215,10 +215,8 @@ class EW309():
 			'tilt_damp_out' : self.max522_dac2_chB
 		}
 
-	# Inputs normalized to [-1,1]
+	# Speed inputs normalized to [-1,1], damp inputs to [0,1]
 	def set_outputs(self,pan_speed=0,tilt_speed=0,pan_damp=0,tilt_damp=0):
-		#abs_pan_speed = max(abs(pan_speed),1)
-		#x_dir = max(pan_speed / abs_pan_speed,0)
 		x_dir = copysign(0.5,pan_speed) + 0.5
 		x_sp = abs(int(pan_speed * 255))
 		x_damp = int(pan_damp*255)
